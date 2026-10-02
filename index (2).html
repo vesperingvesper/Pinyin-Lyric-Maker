@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pinyin Lyric Maker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Noto+Sans:wght@400;500&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Noto+Serif+TC:wght@500;700&family=Noto+Serif+SC:wght@500;700&display=swap">
+<style>
+/* Layout: a lyric-video workbench. Paste panel on the left, a 16:9 stage preview and the line-by-line editor on the right. */
+:root {
+  --bg: #EDEFF5;
+  --surface: #FFFFFF;
+  --sunken: #F5F6FA;
+  --ink: #181B29;
+  --muted: #5C6177;
+  --line: #D8DBE6;
+  --accent: #3A37B5;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E6E5FA;
+  --pinyin: #0A7570;
+  --warn: #A64B06;
+  --warn-soft: #FBEBDD;
+  --stage-a: #0C0E1B;
+  --stage-b: #23173A;
+  --stage-zh: #FFFFFF;
+  --stage-py: #9FE7DE;
+  --stage-en: #DAD7F3;
+  --font-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-zh: "Noto Serif TC", "Noto Serif SC", "Songti TC", "Songti SC", "PMingLiU", serif;
+  --font-py: "Noto Sans", "Figtree", system-ui, sans-serif;
+  --font-en: "Newsreader", Georgia, "Times New Roman", serif;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11121A; --surface: #1A1C28; --sunken: #151620; --ink: #ECEDF5; --muted: #A1A5BA;
+    --line: #2D3043; --accent: #A3A1FF; --accent-ink: #14132E; --accent-soft: #26254A;
+    --pinyin: #55D3C7; --warn: #F2A55E; --warn-soft: #3A2817; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11121A; --surface: #1A1C28; --sunken: #151620; --ink: #ECEDF5; --muted: #A1A5BA;
+  --line: #2D3043; --accent: #A3A1FF; --accent-ink: #14132E; --accent-soft: #26254A;
+  --pinyin: #55D3C7; --warn: #F2A55E; --warn-soft: #3A2817; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { color-scheme: light; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1260px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: grid; gap: 22px; }
+@media (max-width: 520px) { .wrap { padding-inline: 16px; } }
+
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; }
+header.top h1 { margin: 0; font-size: 1.6rem; letter-spacing: -0.01em; font-weight: 700; text-wrap: balance; }
+header.top h1 .zh { font-family: var(--font-zh); font-weight: 700; margin-right: .35em; color: var(--accent); }
+header.top p { margin: 0; color: var(--muted); max-width: 60ch; }
+
+.grid { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 920px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.left { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); }
+@media (max-width: 920px) { .left { position: static; } }
+
+label.f { display: grid; gap: 5px; font-size: .8rem; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+input[type=text], input[type=number], textarea, select {
+  font: inherit; color: var(--ink); background: var(--sunken); border: 1px solid var(--line);
+  border-radius: 7px; padding: 8px 10px; width: 100%; min-width: 0;
+}
+textarea#raw { font-family: var(--font-zh); font-size: 1.15rem; line-height: 1.75; min-height: 300px; resize: vertical; }
+input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.hint { font-size: .8rem; color: var(--muted); margin: 0; }
+
+.example { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  background: var(--accent-soft); border-radius: 7px; padding: 8px 10px; font-size: .82rem; }
+
+fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 10px; }
+legend { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 8px; padding: 0; }
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: .88rem; }
+.check input { margin-top: 3px; accent-color: var(--accent); }
+
+button { font: inherit; cursor: pointer; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 7px 12px; font-weight: 600; font-size: .88rem; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.ghost { background: transparent; border-color: transparent; padding: 4px 8px; }
+button.ghost:hover:not(:disabled) { background: var(--accent-soft); border-color: transparent; }
+
+/* Stage preview */
+.stagebox { display: grid; gap: 10px; }
+.stage { position: relative; aspect-ratio: 16 / 9; max-width: 100%; border-radius: var(--radius); overflow: hidden;
+  background: radial-gradient(120% 90% at 20% 10%, var(--stage-b), var(--stage-a) 70%);
+  display: grid; place-items: center; padding: 4% 6%; container-type: inline-size; }
+.stage .lines { display: grid; gap: 1.4cqw; justify-items: center; text-align: center; width: 100%; }
+.stage .zh { font-family: var(--font-zh); font-weight: 700; color: var(--stage-zh); font-size: 5.4cqw; line-height: 1.25; letter-spacing: .04em; text-shadow: 0 2px 18px rgba(0,0,0,.45); }
+.stage .zh .ch .p { font-family: var(--font-py); font-weight: 500; font-size: .42em; color: var(--stage-py); letter-spacing: 0; }
+.stage .py { font-family: var(--font-py); color: var(--stage-py); font-size: 2.6cqw; letter-spacing: .01em; }
+.stage .en { font-family: var(--font-en); font-style: italic; color: var(--stage-en); font-size: 3cqw; line-height: 1.3; max-width: 92%; }
+.stage .empty { color: var(--stage-en); font-family: var(--font-ui); font-size: 2.2cqw; opacity: .8; }
+.stage .tag { position: absolute; left: 2.4%; top: 4%; font-family: var(--font-ui); font-size: max(10px, 1.5cqw); color: var(--stage-en); opacity: .75; letter-spacing: .06em; text-transform: uppercase; }
+.stagebar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.stagebar .nav { display: flex; gap: 6px; align-items: center; }
+.counter { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Toolbar */
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.toolbar .grow { flex: 1 1 auto; }
+.toolbar select { width: auto; }
+.status { font-size: .85rem; color: var(--muted); min-height: 1.3em; }
+.status.err { color: var(--warn); }
+.sep { width: 1px; align-self: stretch; background: var(--line); }
+
+/* Line list */
+.list { display: grid; gap: 0; }
+.ln { display: grid; grid-template-columns: 2.2rem minmax(0, 1fr); gap: 4px 12px; padding: 14px 4px; border-top: 1px solid var(--line); cursor: default; }
+.ln:first-child { border-top: 0; }
+.ln.sel { background: var(--accent-soft); border-radius: 8px; border-top-color: transparent; }
+.ln.sel + .ln { border-top-color: transparent; }
+.ln .no { font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 1.35rem; text-align: right; }
+.ln .body { display: grid; gap: 8px; min-width: 0; }
+.ruby { font-family: var(--font-zh); font-size: 1.6rem; font-weight: 500; line-height: 1.2; overflow-wrap: anywhere; cursor: pointer; }
+.ch { display: inline-flex; flex-direction: column; align-items: center; margin: 0 .1em; vertical-align: bottom; }
+.ch .p { font-family: var(--font-py); font-size: .5em; font-weight: 400; color: var(--pinyin); line-height: 1.35; white-space: nowrap; min-height: 1.35em; }
+.ruby .poly .c { text-decoration: underline dotted var(--warn); text-underline-offset: .22em; text-decoration-thickness: 2px; }
+.ruby .gap { display: inline-block; width: .5em; }
+.ruby .w, .stage .zh .w { font-family: var(--font-py); font-size: .8em; vertical-align: bottom; }
+.fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 8px; }
+@media (max-width: 640px) { .fields { grid-template-columns: minmax(0, 1fr); } }
+.fld { position: relative; display: flex; gap: 4px; align-items: center; min-width: 0; }
+.fld input { flex: 1 1 auto; }
+.fld.py input { font-family: var(--font-py); color: var(--pinyin); }
+.fld.en input { font-family: var(--font-en); font-style: italic; font-size: 1.02rem; }
+.badge { font-size: .68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 2px 6px; border: 1px solid var(--line); border-radius: 999px; white-space: nowrap; }
+.warnline { font-size: .78rem; color: var(--warn); background: var(--warn-soft); border-radius: 6px; padding: 4px 8px; }
+.stanza { height: 18px; border-top: 1px dashed var(--line); margin: 6px 0 0 3.2rem; }
+.stanza + .ln { border-top: 0; }
+.emptylist { padding: 28px 8px; color: var(--muted); text-align: center; }
+
+.exportbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.exportbar input[type=number] { width: 4.5rem; }
+.secs { display: inline-flex; gap: 6px; align-items: center; font-size: .82rem; color: var(--muted); }
+h2 { margin: 0; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: .78rem; color: var(--muted); }
+.legend .u { text-decoration: underline dotted var(--warn); text-decoration-thickness: 2px; text-underline-offset: .2em; font-family: var(--font-zh); color: var(--ink); }
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 22px); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: .88rem; font-weight: 600; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+@media (prefers-reduced-motion: no-preference) { .toast { transition: opacity .2s; } }
+.manual { display: grid; gap: 8px; padding: 12px; background: var(--sunken); border: 1px solid var(--line); border-radius: 8px; }
+.manual textarea { font-family: var(--font-en); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1><span class="zh">歌詞</span>Pinyin Lyric Maker</h1>
+    <p>Paste Chinese lyrics, one line per lyric line. You get Hanyu Pinyin straight away, English from Claude, and a frame preview for your lyric video.</p>
+  </header>
+
+  <div class="grid">
+    <!-- Left: input and options -->
+    <section class="panel left" aria-label="Lyrics input">
+      <div class="row2">
+        <label class="f">Song title<input type="text" id="title" placeholder="e.g. 一剪梅" autocomplete="off"></label>
+        <label class="f">Artist<input type="text" id="artist" placeholder="e.g. 費玉清" autocomplete="off"></label>
+      </div>
+      <div class="example" id="exampleNote" hidden>
+        <span>Example loaded: 静夜思, a Tang poem by Li Bai.</span>
+        <button type="button" id="clearBtn">Clear and paste mine</button>
+      </div>
+      <label class="f">Chinese lyrics
+        <textarea id="raw" spellcheck="false" placeholder="Paste lyrics here. Leave a blank line between verses."></textarea>
+      </label>
+      <p class="hint">Traditional and simplified both work. Blank lines become verse breaks. Repeated lines (like a chorus) share one pinyin and English edit.</p>
+
+      <fieldset>
+        <legend>Pinyin</legend>
+        <label class="f">Tone style
+          <select id="tone">
+            <option value="symbol">Tone marks (nǐ hǎo)</option>
+            <option value="num">Tone numbers (ni3 hao3)</option>
+            <option value="none">No tones (ni hao)</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="sandhi" checked><span>Show spoken tone changes for 一 and 不 (yí gè, bú yào)</span></label>
+        <label class="check"><input type="checkbox" id="mark" checked><span>Underline characters with more than one reading so I can check them</span></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Video layout</legend>
+        <label class="f">Where pinyin goes
+          <select id="layout">
+            <option value="ruby">Over each character</option>
+            <option value="above">As a line above the Chinese</option>
+            <option value="below">As a line below the Chinese</option>
+          </select>
+        </label>
+      </fieldset>
+    </section>
+
+    <!-- Right: preview, translate, lines, export -->
+    <div style="display:grid; gap:22px; min-width:0">
+      <section class="panel stagebox" aria-label="Video frame preview">
+        <div class="stage" id="stage"><span class="tag" id="stageTag"></span><div class="lines" id="stageLines"></div></div>
+        <div class="stagebar">
+          <span class="counter" id="counter"></span>
+          <div class="nav">
+            <button type="button" id="prevBtn" aria-label="Previous line">← Prev</button>
+            <button type="button" id="nextBtn" aria-label="Next line">Next →</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Lines">
+        <div class="toolbar">
+          <h2 class="grow">Lines</h2>
+          <label class="sr" for="style">Translation style</label>
+          <select id="style" title="Translation style">
+            <option value="natural">Natural English</option>
+            <option value="literal">Close to literal</option>
+            <option value="lyrical">Lyrical, song-like</option>
+          </select>
+          <button type="button" class="primary" id="translateBtn">Translate with Claude</button>
+          <button type="button" id="stopBtn" hidden>Stop</button>
+          <button type="button" class="primary" id="copyPromptBtn" hidden>Copy prompt for Claude</button>
+        </div>
+        <div class="manual" id="manual" hidden>
+          <p class="hint">No built-in translator here. Press <b>Copy prompt for Claude</b>, paste it into a chat at claude.ai, then copy Claude's reply into the box below.</p>
+          <label class="f" for="pasteEn">Claude's reply</label>
+          <textarea id="pasteEn" rows="4" placeholder='["First line", "Second line", ...]   or one English line per Chinese line'></textarea>
+          <div><button type="button" id="fillBtn">Fill English lines</button></div>
+        </div>
+        <div class="status" id="status" role="status"></div>
+        <div class="legend" id="legend">
+          <span>Click a line to preview it.</span>
+          <span><span class="u">长</span> has more than one reading. Hover to see them, then fix the pinyin box if needed.</span>
+          <span>Lines you type English for yourself are kept when you translate again.</span>
+        </div>
+        <div class="list" id="list"></div>
+      </section>
+
+      <section class="panel" aria-label="Export">
+        <h2>Export</h2>
+        <div class="exportbar">
+          <button type="button" id="copyText">Copy lyrics text</button>
+          <button type="button" id="copySrt">Copy as SRT subtitles</button>
+          <span class="secs"><label for="secs">seconds per line</label><input type="number" id="secs" min="1" max="30" step="0.5" value="4"></span>
+          <span class="sep" aria-hidden="true"></span>
+          <button type="button" id="saveTxt">Save .txt</button>
+          <button type="button" id="saveCsv">Save .csv</button>
+        </div>
+        <p class="hint">The text export follows your layout choice: three lines per lyric, blank line between. SRT gives every line an evenly spaced placeholder time; drop it into CapCut, Premiere or Aegisub and re-time to the song.</p>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.29.4/dist/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/opencc-js@1.4.2/dist/umd/t2cn.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const STORE = "pinyin-lyric-maker:v1";
+  const SAMPLE = {
+    title: "静夜思",
+    artist: "李白",
+    raw: "床前明月光\n疑是地上霜\n举头望明月\n低头思故乡",
+    memo: {
+      "床前明月光": { en: "Bright moonlight spills before my bed", enSrc: "claude" },
+      "疑是地上霜": { en: "I wonder if it's frost upon the ground", enSrc: "claude" },
+      "举头望明月": { en: "I lift my head to gaze at the bright moon", enSrc: "claude" },
+      "低头思故乡": { en: "I lower my head and long for home", enSrc: "claude" }
+    }
+  };
+
+  // ---------- state ----------
+  let state = { title: "", artist: "", raw: "", memo: {}, opts: { tone: "symbol", sandhi: true, mark: true, layout: "ruby", style: "natural", secs: 4 } };
+  let sel = 0;              // index into content lines (non-blank)
+  let lines = [];           // [{zh, blank}]
+  const libOK = typeof window.pinyinPro !== "undefined";
+  let t2s = null;
+  try { if (window.OpenCC) t2s = OpenCC.Converter({ from: "tw", to: "cn" }); } catch (e) { t2s = null; }
+
+  function load() {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(STORE) || "null"); } catch (e) { saved = null; }
+    if (saved && typeof saved.raw === "string") {
+      state = { ...state, ...saved, opts: { ...state.opts, ...(saved.opts || {}) }, memo: saved.memo || {} };
+    } else {
+      state.title = SAMPLE.title; state.artist = SAMPLE.artist; state.raw = SAMPLE.raw;
+      state.memo = JSON.parse(JSON.stringify(SAMPLE.memo));
+    }
+  }
+  let saveTimer = null;
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {} }, 300);
+  }
+
+  // ---------- pinyin ----------
+  const PUNCT = { "，": ",", "。": ".", "！": "!", "？": "?", "、": ",", "：": ":", "；": ";", "（": "(", "）": ")", "「": "\"", "」": "\"", "『": "\"", "』": "\"", "“": "\"", "”": "\"", "～": "~", "—": "-" };
+  const isSpace = (c) => /\s/.test(c);
+  const isWordChar = (c) => /[\p{L}\p{N}']/u.test(c);
+
+  // Break a line into units: han {ch, py, poly}, word {text}, space, punct {text}
+  function analyse(zh) {
+    const orig = Array.from(zh);
+    if (!libOK) return orig.map((ch) => isSpace(ch) ? { t: "space" } : { t: "punct", text: ch });
+    let src = zh;
+    if (t2s) { try { const s = t2s(zh); if (Array.from(s).length === orig.length) src = s; } catch (e) {} }
+    const all = pinyinPro.pinyin(src, { type: "all", toneType: state.opts.tone, toneSandhi: state.opts.sandhi });
+    const same = all.length === orig.length;
+    const units = [];
+    all.forEach((it, i) => {
+      const ch = same ? orig[i] : it.origin;
+      if (it.isZh) {
+        const poly = Array.isArray(it.polyphonic) ? [...new Set(it.polyphonic)] : [];
+        units.push({ t: "han", ch, py: it.pinyin, poly });
+      } else if (isSpace(ch)) {
+        units.push({ t: "space" });
+      } else if (isWordChar(ch)) {
+        const last = units[units.length - 1];
+        if (last && last.t === "word") last.text += ch; else units.push({ t: "word", text: ch });
+      } else {
+        units.push({ t: "punct", text: ch });
+      }
+    });
+    return units;
+  }
+
+  function autoPinyin(units) {
+    const toks = [];
+    for (const u of units) {
+      if (u.t === "han") toks.push(u.py);
+      else if (u.t === "word") toks.push(u.text);
+      else if (u.t === "punct") {
+        const p = PUNCT[u.text] ?? u.text;
+        if (toks.length) toks[toks.length - 1] += p; else toks.push(p);
+      }
+    }
+    return toks.join(" ");
+  }
+
+  function entry(zh) {
+    const m = state.memo[zh] || {};
+    const units = analyse(zh);
+    const auto = autoPinyin(units);
+    const py = m.pyEdited && typeof m.py === "string" ? m.py : auto;
+    return { zh, units, py, auto, pyEdited: !!m.pyEdited, en: m.en || "", enSrc: m.enSrc || "" };
+  }
+
+  // Pair pinyin tokens with characters for ruby display
+  function pairTokens(units, py) {
+    const toks = py.trim().split(/\s+/).filter((t) => /[\p{L}\p{N}]/u.test(t))
+      .map((t) => t.replace(/[^\p{L}\p{N}\p{M}']/gu, ""));
+    const need = units.filter((u) => u.t === "han" || u.t === "word").length;
+    let k = 0;
+    const out = units.map((u) => (u.t === "han" || u.t === "word") ? { ...u, tok: toks[k++] ?? "" } : u);
+    return { out, mismatch: toks.length !== need ? { have: toks.length, need } : null };
+  }
+
+  function buildRuby(el, units, py, markPoly) {
+    el.textContent = "";
+    const { out, mismatch } = pairTokens(units, py);
+    for (const u of out) {
+      if (u.t === "han") {
+        const r = document.createElement("span"); r.className = "ch";
+        const rt = document.createElement("span"); rt.className = "p"; rt.textContent = u.tok;
+        const c = document.createElement("span"); c.className = "c"; c.textContent = u.ch;
+        r.append(rt, c);
+        if (markPoly && u.poly && u.poly.length > 1) { r.classList.add("poly"); r.title = "Can be read: " + u.poly.join(" / "); }
+        el.append(r);
+      } else if (u.t === "word") {
+        const s = document.createElement("span"); s.className = "w"; s.textContent = u.text; el.append(s);
+      } else if (u.t === "space") {
+        const s = document.createElement("span"); s.className = "gap"; el.append(s);
+      } else {
+        el.append(document.createTextNode(u.text));
+      }
+    }
+    return mismatch;
+  }
+
+  // ---------- lines ----------
+  function parseLines() {
+    lines = state.raw.replace(/\r/g, "").split("\n").map((s) => s.trim());
+    // collapse runs of blank lines and trim leading/trailing blanks
+    const out = [];
+    for (const s of lines) {
+      if (!s) { if (out.length && out[out.length - 1] !== "") out.push(""); }
+      else out.push(s);
+    }
+    while (out.length && out[out.length - 1] === "") out.pop();
+    lines = out;
+  }
+  const contentLines = () => lines.filter((s) => s);
+
+  function renderList() {
+    const list = $("list");
+    list.textContent = "";
+    const content = contentLines();
+    if (!content.length) {
+      const d = document.createElement("div"); d.className = "emptylist";
+      d.textContent = "Paste Chinese lyrics on the left and each line will appear here with pinyin.";
+      list.append(d);
+      return;
+    }
+    if (sel >= content.length) sel = content.length - 1;
+    let n = 0;
+    for (const zh of lines) {
+      if (!zh) { const s = document.createElement("div"); s.className = "stanza"; s.setAttribute("aria-hidden", "true"); list.append(s); continue; }
+      const idx = n++;
+      list.append(renderLine(zh, idx));
+    }
+  }
+
+  function renderLine(zh, idx) {
+    const e = entry(zh);
+    const row = document.createElement("div");
+    row.className = "ln" + (idx === sel ? " sel" : "");
+    row.dataset.idx = idx; row.dataset.zh = zh;
+
+    const no = document.createElement("div"); no.className = "no"; no.textContent = idx + 1;
+    const body = document.createElement("div"); body.className = "body";
+
+    const ruby = document.createElement("div"); ruby.className = "ruby"; ruby.lang = "zh";
+    ruby.addEventListener("click", () => select(idx));
+    const warn = document.createElement("div"); warn.className = "warnline"; warn.hidden = true;
+
+    const fields = document.createElement("div"); fields.className = "fields";
+
+    const pyF = document.createElement("div"); pyF.className = "fld py";
+    const pyIn = document.createElement("input"); pyIn.type = "text"; pyIn.value = e.py; pyIn.id = "py-" + idx;
+    pyIn.setAttribute("aria-label", "Pinyin for line " + (idx + 1)); pyIn.spellcheck = false;
+    const pyReset = document.createElement("button"); pyReset.type = "button"; pyReset.className = "ghost"; pyReset.textContent = "↺";
+    pyReset.title = "Go back to automatic pinyin"; pyReset.setAttribute("aria-label", "Reset pinyin for line " + (idx + 1));
+    pyReset.hidden = !e.pyEdited;
+    pyF.append(pyIn, pyReset);
+
+    const enF = document.createElement("div"); enF.className = "fld en";
+    const enIn = document.createElement("input"); enIn.type = "text"; enIn.value = e.en; enIn.id = "en-" + idx;
+    enIn.placeholder = "English translation"; enIn.setAttribute("aria-label", "English for line " + (idx + 1));
+    const badge = document.createElement("span"); badge.className = "badge";
+    const redo = document.createElement("button"); redo.type = "button"; redo.className = "ghost"; redo.textContent = "↻";
+    redo.title = "Ask Claude for a different translation of this line"; redo.setAttribute("aria-label", "Retranslate line " + (idx + 1));
+    redo.hidden = !sampleAvail;
+    enF.append(enIn, badge, redo);
+    fields.append(pyF, enF);
+
+    const paintBadge = (src, en) => { badge.textContent = src === "you" ? "You" : "Claude"; badge.hidden = !en || !src; };
+    paintBadge(e.enSrc, e.en);
+
+    const paintRuby = (py) => {
+      const mm = buildRuby(ruby, e.units, py, state.opts.mark);
+      if (mm) { warn.hidden = false; warn.textContent = `Pinyin has ${mm.have} syllables but the line has ${mm.need} characters. Separate syllables with spaces.`; }
+      else warn.hidden = true;
+    };
+    paintRuby(e.py);
+
+    pyIn.addEventListener("focus", () => select(idx, true));
+    enIn.addEventListener("focus", () => select(idx, true));
+    pyIn.addEventListener("input", () => {
+      const m = (state.memo[zh] ||= {});
+      if (pyIn.value.trim() === e.auto) { delete m.py; m.pyEdited = false; } else { m.py = pyIn.value; m.pyEdited = true; }
+      pyReset.hidden = !m.pyEdited;
+      paintRuby(pyIn.value);
+      syncTwins(zh, row, "py", pyIn.value);
+      save(); renderStage();
+    });
+    pyReset.addEventListener("click", () => {
+      const m = (state.memo[zh] ||= {}); delete m.py; m.pyEdited = false;
+      save(); renderList(); renderStage();
+    });
+    enIn.addEventListener("input", () => {
+      const m = (state.memo[zh] ||= {});
+      m.en = enIn.value; m.enSrc = enIn.value.trim() ? "you" : "";
+      paintBadge(m.enSrc, m.en);
+      syncTwins(zh, row, "en", enIn.value);
+      save(); renderStage();
+    });
+    redo.addEventListener("click", () => retranslateLine(zh));
+
+    body.append(ruby, warn, fields);
+    row.append(no, body);
+    row._paintRuby = paintRuby; row._paintBadge = paintBadge;
+    return row;
+  }
+
+  // Keep repeated lines (chorus) in step without rebuilding the focused row
+  function syncTwins(zh, srcRow, kind, value) {
+    document.querySelectorAll(".ln").forEach((r) => {
+      if (r === srcRow || r.dataset.zh !== zh) return;
+      const inp = r.querySelector(kind === "py" ? ".fld.py input" : ".fld.en input");
+      if (inp) inp.value = value;
+      if (kind === "py") { r._paintRuby(value); r.querySelector(".fld.py button").hidden = !state.memo[zh]?.pyEdited; }
+      else r._paintBadge(state.memo[zh]?.enSrc, value);
+    });
+  }
+
+  function select(idx, fromField) {
+    const content = contentLines();
+    if (!content.length) return;
+    sel = Math.max(0, Math.min(idx, content.length - 1));
+    document.querySelectorAll(".ln").forEach((r) => r.classList.toggle("sel", Number(r.dataset.idx) === sel));
+    renderStage();
+  }
+
+  // ---------- stage ----------
+  function renderStage() {
+    const box = $("stageLines"); box.textContent = "";
+    const content = contentLines();
+    $("stageTag").textContent = [state.title, state.artist].filter(Boolean).join(" · ");
+    $("counter").textContent = content.length ? `Line ${sel + 1} of ${content.length}` : "No lines yet";
+    $("prevBtn").disabled = sel <= 0; $("nextBtn").disabled = sel >= content.length - 1;
+    if (!content.length) { const d = document.createElement("div"); d.className = "empty"; d.textContent = "Your lyric frame appears here"; box.append(d); return; }
+    const e = entry(content[sel]);
+    const zhEl = document.createElement("div"); zhEl.className = "zh"; zhEl.lang = "zh";
+    const pyEl = document.createElement("div"); pyEl.className = "py";
+    const enEl = document.createElement("div"); enEl.className = "en"; enEl.textContent = e.en || "";
+    if (state.opts.layout === "ruby") {
+      buildRuby(zhEl, e.units, e.py, false);
+      box.append(zhEl);
+    } else {
+      zhEl.textContent = e.zh; pyEl.textContent = e.py;
+      if (state.opts.layout === "above") box.append(pyEl, zhEl); else box.append(zhEl, pyEl);
+    }
+    if (e.en) box.append(enEl);
+  }
+
+  // ---------- exports ----------
+  function rowsForExport() {
+    return contentLines().map((zh) => { const e = entry(zh); return { zh, py: e.py, en: e.en }; });
+  }
+  function tri(r) {
+    const pyFirst = state.opts.layout !== "below";
+    return (pyFirst ? [r.py, r.zh, r.en] : [r.zh, r.py, r.en]).filter((s) => s && s.trim());
+  }
+  function exportText() {
+    const out = []; let n = 0; const rows = rowsForExport();
+    const head = [state.title, state.artist].filter(Boolean).join(" - ");
+    if (head) out.push(head, "");
+    for (const zh of lines) {
+      if (!zh) { out.push(""); continue; }
+      out.push(tri(rows[n++]).join("\n")); out.push("");
+    }
+    return out.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+  }
+  function srtTime(sec) {
+    const ms = Math.round(sec * 1000);
+    const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60, r = ms % 1000;
+    const p = (v, l = 2) => String(v).padStart(l, "0");
+    return `${p(h)}:${p(m)}:${p(s)},${p(r, 3)}`;
+  }
+  function exportSrt() {
+    const secs = Math.max(0.5, Number(state.opts.secs) || 4);
+    return rowsForExport().map((r, i) => `${i + 1}\n${srtTime(i * secs)} --> ${srtTime((i + 1) * secs - 0.1)}\n${tri(r).join("\n")}\n`).join("\n");
+  }
+  function exportCsv() {
+    const q = (s) => '"' + String(s ?? "").replace(/"/g, '""') + '"';
+    const rows = rowsForExport().map((r, i) => [i + 1, q(r.zh), q(r.py), q(r.en)].join(","));
+    return "﻿" + ["Line,Chinese,Pinyin,English", ...rows].join("\r\n") + "\r\n";
+  }
+  async function copy(text, label) {
+    try { await navigator.clipboard.writeText(text); toast(label + " copied"); }
+    catch (e) {
+      const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.append(ta); ta.select();
+      let ok = false; try { ok = document.execCommand("copy"); } catch (_) {}
+      ta.remove(); toast(ok ? label + " copied" : "Copy was blocked here. Use Save instead.");
+    }
+  }
+  let toastTimer;
+  function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2200); }
+  const fileBase = () => ([state.title, state.artist].filter(Boolean).join(" - ") || "lyrics").replace(/[\\/:*?"<>|]/g, "");
+
+  // ---------- Claude translation ----------
+  let sample = null, sampleAvail = false, downloads = null, ctl = null;
+  const STYLE = {
+    natural: "Natural, clear English a viewer can read in a couple of seconds on screen. Stay faithful to the meaning.",
+    literal: "Stay close to the Chinese wording and images, keeping word order where English allows. Aimed at people learning Chinese.",
+    lyrical: "Lyrical English that reads like a song lyric, faithful in meaning, of similar length to the original line."
+  };
+  function songContext() {
+    const head = [state.title && `Song: ${state.title}`, state.artist && `Artist: ${state.artist}`].filter(Boolean).join("\n");
+    const body = lines.map((s) => s || "").join("\n");
+    return (head ? head + "\n\n" : "") + "Full lyrics (blank lines are verse breaks):\n" + body;
+  }
+  function setStatus(msg, err) { const s = $("status"); s.textContent = msg || ""; s.classList.toggle("err", !!err); }
+  function errCopy(e) {
+    switch (e && e.code) {
+      case "cancelled": return "";
+      case "not_granted": case "sampling_disabled": case "not_declared": case "capability_disabled": case "capability_removed":
+        return "Claude isn't available on this page right now. You can still type English yourself.";
+      case "rate_limited": return "Too many requests just now. Wait a minute and try again.";
+      case "session_expired": return "Your Claude sign-in expired. Sign in again, then retry.";
+      case "invalid_json": return "Claude's answer came back in the wrong shape. Press Translate again.";
+      case "prompt_too_large": return "These lyrics are too long to send at once. Try half the song at a time.";
+      case "refused": return "Claude declined to translate this text.";
+      default: return "Translation didn't finish. Check your connection and try again.";
+    }
+  }
+  function hideSampleUI(e) {
+    if (e && ["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"].includes(e.code)) {
+      sampleAvail = false; $("translateBtn").hidden = true; showManual();
+      document.querySelectorAll(".fld.en button").forEach((b) => (b.hidden = true));
+    }
+  }
+
+  function buildPrompt(uniq) {
+    return `You are translating Chinese song lyrics into English subtitles for a YouTube lyric video.
+Style: ${STYLE[state.opts.style]}
+Read the whole song first so each line fits the story and mood, then translate each numbered line below on its own. Lyrics often run across lines; keep each English line matched to its own Chinese line. Do not add notes, romanization or quotation marks.
+
+${songContext()}
+
+Lines to translate:
+${uniq.map((s, i) => `${i + 1}. ${s}`).join("\n")}
+
+Reply with only a JSON array of exactly ${uniq.length} English strings, in the same order. Example for two lines: ["First line", "Second line"]`;
+  }
+
+  function applyEnglish(uniq, arr) {
+    let filled = 0, kept = 0;
+    uniq.forEach((zh, i) => {
+      const m = (state.memo[zh] ||= {});
+      if (m.enSrc === "you" && m.en) { kept++; return; }
+      const t = typeof arr[i] === "string" ? arr[i].trim() : "";
+      if (t) { m.en = t; m.enSrc = "claude"; filled++; }
+    });
+    if (arr.length !== uniq.length) setStatus(`Got ${arr.length} English lines for ${uniq.length} Chinese lines. Check each one matches.`, true);
+    else setStatus(`Filled ${filled} line${filled === 1 ? "" : "s"}` + (kept ? `, kept ${kept} you wrote yourself.` : ".") + " Check them over; you can edit any line.");
+    save(); renderList(); renderStage();
+  }
+
+  function parsePasted(text) {
+    const t = text.trim();
+    const a = t.indexOf("["), b = t.lastIndexOf("]");
+    if (a !== -1 && b > a) { try { const arr = JSON.parse(t.slice(a, b + 1)); if (Array.isArray(arr)) return arr.map((x) => String(x)); } catch (e) {} }
+    return t.split(/\r?\n/).map((l) => l.replace(/^\s*\d+[.)、:]\s*/, "").replace(/^["'“]|["'”],?$/g, "").trim()).filter(Boolean);
+  }
+
+  async function translateAll() {
+    if (!sample) return;
+    const uniq = [...new Set(contentLines())];
+    if (!uniq.length) { setStatus("Paste some lyrics first."); return; }
+    ctl = new AbortController();
+    $("translateBtn").disabled = true; $("stopBtn").hidden = false;
+    setStatus(`Translating ${uniq.length} line${uniq.length > 1 ? "s" : ""}… this can take up to a minute.`);
+    const prompt = buildPrompt(uniq);
+    try {
+      const arr = await sample.json(prompt, { signal: ctl.signal, onText: () => setStatus("Writing the translation…") });
+      if (!Array.isArray(arr)) throw { code: "invalid_json" };
+      applyEnglish(uniq, arr);
+    } catch (e) {
+      setStatus(errCopy(e), true); hideSampleUI(e);
+    } finally {
+      $("translateBtn").disabled = false; $("stopBtn").hidden = true; ctl = null;
+    }
+  }
+
+  async function retranslateLine(zh) {
+    if (!sample) return;
+    const cur = state.memo[zh]?.en || "";
+    setStatus(`Asking Claude about "${zh}"…`);
+    const prompt =
+`You are translating Chinese song lyrics into English subtitles for a YouTube lyric video.
+Style: ${STYLE[state.opts.style]}
+
+${songContext()}
+
+Translate this one line so it fits the song: ${zh}
+${cur ? `The current translation is: "${cur}". Give a different, better option.` : ""}
+Reply with only JSON like {"en": "your translation"}.`;
+    try {
+      const r = await sample.json(prompt, { cache: false });
+      const t = r && typeof r.en === "string" ? r.en.trim() : "";
+      if (!t) throw { code: "invalid_json" };
+      const m = (state.memo[zh] ||= {}); m.en = t; m.enSrc = "claude";
+      setStatus("Updated: " + zh);
+      save(); renderList(); renderStage();
+    } catch (e) { setStatus(errCopy(e), true); hideSampleUI(e); }
+  }
+
+  // ---------- wiring ----------
+  function syncInputs() {
+    $("title").value = state.title; $("artist").value = state.artist; $("raw").value = state.raw;
+    $("tone").value = state.opts.tone; $("sandhi").checked = state.opts.sandhi; $("mark").checked = state.opts.mark;
+    $("layout").value = state.opts.layout; $("style").value = state.opts.style; $("secs").value = state.opts.secs;
+    $("exampleNote").hidden = state.raw !== SAMPLE.raw;
+  }
+  function refresh() { parseLines(); renderList(); renderStage(); $("exampleNote").hidden = state.raw !== SAMPLE.raw; }
+
+  let rawTimer;
+  $("raw").addEventListener("input", () => { state.raw = $("raw").value; save(); clearTimeout(rawTimer); rawTimer = setTimeout(refresh, 250); });
+  $("title").addEventListener("input", () => { state.title = $("title").value; save(); renderStage(); });
+  $("artist").addEventListener("input", () => { state.artist = $("artist").value; save(); renderStage(); });
+  $("tone").addEventListener("change", () => { state.opts.tone = $("tone").value; save(); refresh(); });
+  $("sandhi").addEventListener("change", () => { state.opts.sandhi = $("sandhi").checked; save(); refresh(); });
+  $("mark").addEventListener("change", () => { state.opts.mark = $("mark").checked; save(); renderList(); });
+  $("layout").addEventListener("change", () => { state.opts.layout = $("layout").value; save(); renderStage(); });
+  $("style").addEventListener("change", () => { state.opts.style = $("style").value; save(); });
+  $("secs").addEventListener("input", () => { state.opts.secs = Number($("secs").value) || 4; save(); });
+  $("clearBtn").addEventListener("click", () => {
+    state.title = ""; state.artist = ""; state.raw = ""; state.memo = {}; sel = 0;
+    syncInputs(); save(); refresh(); $("raw").focus();
+  });
+  $("prevBtn").addEventListener("click", () => select(sel - 1));
+  $("nextBtn").addEventListener("click", () => select(sel + 1));
+  $("translateBtn").addEventListener("click", translateAll);
+  $("stopBtn").addEventListener("click", () => ctl && ctl.abort());
+  function showManual() { $("copyPromptBtn").hidden = false; $("manual").hidden = false; $("style").hidden = false; }
+  $("copyPromptBtn").addEventListener("click", () => {
+    const uniq = [...new Set(contentLines())];
+    if (!uniq.length) { setStatus("Paste some lyrics first."); return; }
+    copy(buildPrompt(uniq), "Prompt");
+    setStatus("Prompt copied. Paste it into Claude, then paste the reply below.");
+  });
+  $("fillBtn").addEventListener("click", () => {
+    const uniq = [...new Set(contentLines())];
+    const arr = parsePasted($("pasteEn").value);
+    if (!uniq.length) { setStatus("Paste some lyrics first."); return; }
+    if (!arr.length) { setStatus("Paste Claude's reply into the box first.", true); return; }
+    applyEnglish(uniq, arr);
+  });
+  $("copyText").addEventListener("click", () => copy(exportText(), "Lyrics"));
+  $("copySrt").addEventListener("click", () => copy(exportSrt(), "SRT subtitles"));
+  async function saveFile(name, data) {
+    if (!downloads) {
+      const mime = name.endsWith(".csv") ? "text/csv;charset=utf-8" : "text/plain;charset=utf-8";
+      const url = URL.createObjectURL(new Blob([data], { type: mime }));
+      const a = document.createElement("a"); a.href = url; a.download = name;
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast("Saved " + name); return;
+    }
+    try { await downloads.save({ filename: name, data }); toast("Saved " + name); }
+    catch (e) { if (e && e.code !== "declined") toast("Couldn't save the file here. Use Copy instead."); }
+  }
+  $("saveTxt").addEventListener("click", () => saveFile(fileBase() + ".txt", exportText()));
+  $("saveCsv").addEventListener("click", () => saveFile(fileBase() + ".csv", exportCsv()));
+  document.addEventListener("keydown", (ev) => {
+    if (ev.target.matches("input, textarea, select")) return;
+    if (ev.key === "ArrowRight") select(sel + 1);
+    if (ev.key === "ArrowLeft") select(sel - 1);
+  });
+
+  // ---------- boot ----------
+  load(); syncInputs(); refresh();
+  if (!libOK) setStatus("The pinyin library didn't load. Reload the page to try again.", true);
+
+  $("translateBtn").hidden = true; $("style").hidden = true;
+  if (window.claude && typeof window.claude.use === "function") {
+    claude.use("sample").then((s) => {
+      sample = s; sampleAvail = !!s;
+      $("translateBtn").hidden = !s; $("style").hidden = !s;
+      if (s) renderList(); else showManual();
+    }).catch(() => {});
+    claude.use("downloads").then((d) => {
+      downloads = d;
+    }).catch(() => {});
+  } else {
+    showManual();
+  }
+})();
+</script>
+</body>
+</html>
